@@ -1,10 +1,6 @@
 package kr.ac.korea.mobide.sigma.classifier.sqlite;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.HashMap;
 
 import kr.ac.korea.mobide.sigma.classifier.CentroidClassifier;
@@ -20,6 +16,8 @@ import kr.ac.korea.mobide.sigma.vsm.VectorSpaceModel;
  */
 public class CentroidClassifierSQLite extends CentroidClassifier {
 
+    private final String url;
+
     /**
      * Constructs a CentroidClassifier object from the SQLite classifier database file
      * specified by filePath and fileName.
@@ -32,37 +30,67 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     }
 
     public CentroidClassifierSQLite(String filePath) {
+        url = filePath;
+        Statement stmt = null;
+        ResultSet result = null;
         try {
             Class.forName("org.sqlite.JDBC");
-            this.conn = DriverManager.getConnection("jdbc:sqlite:" + filePath);
-            Statement stmt = this.conn.createStatement();
-            ResultSet result = stmt.executeQuery("select df from vocabulary where termid = " + VectorSpaceModel.TERMID_NUM_TRAINING_DOC);
+            this.conn = DriverManager.getConnection("jdbc:sqlite:" + url);
+            stmt = this.conn.createStatement();
+            result = stmt.executeQuery("select df from vocabulary where termid = " + VectorSpaceModel.TERMID_NUM_TRAINING_DOC);
             if (!result.next()) {
                 System.out.println(VectorSpaceModel.TERM_NUM_TRAINING_DOC + " is not in the vocabulary");
             }
             this.numDoc = result.getInt("df");
-            result.close();
+
             this.mapTermIDDF = new HashMap<Integer, Integer>();
-            this.pstmtVocabulary = this.conn.prepareStatement("select termid, df from vocabulary where term like ?");
-            this.pstmtPostings = this.conn.prepareStatement("select CategoryID, TFIDF from postings where TermID = ?");
-            this.pstmtScalar = this.conn.prepareStatement("select scalar from category where categoryID = ?");
-            this.pstmtCName = this.conn.prepareStatement("select name from category where categoryID = ?");
-            this.pstmtCID = this.conn.prepareStatement("select categoryID from category where name like ?");
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(stmt);
+        }
+    }
+
+    public void close(ResultSet result) {
+        try {
+            result.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void close(Statement statement) {
+        try {
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void close(Connection conn) {
+        try {
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     @Override
     public String getCategoryName(int cid) {
         String cname = "";
+        ResultSet result = null;
+        PreparedStatement statement = null;
         try {
-            this.pstmtCName.setInt(1, cid);
-            ResultSet result = this.pstmtCName.executeQuery();
+            statement = this.conn.prepareStatement("select name from category where categoryID = ?");
+            statement.setInt(1, cid);
+            result = statement.executeQuery();
             if (result.next()) cname = result.getString("name");
-            result.close();
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(statement);
         }
         return cname;
     }
@@ -70,13 +98,18 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     @Override
     public int getCategoryID(String cname) {
         int cid = -1;
+        ResultSet result = null;
+        PreparedStatement statement = null;
         try {
-            this.pstmtCID.setString(1, cname);
-            ResultSet result = this.pstmtCID.executeQuery();
+            statement = this.conn.prepareStatement("select categoryID from category where name like ?");
+            statement.setString(1, cname);
+            result = statement.executeQuery();
             if (result.next()) cid = result.getInt("categoryID");
-            result.close();
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(statement);
         }
         return cid;
     }
@@ -85,16 +118,21 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     public int getTermID(String term) {
         int termID = -1;
         if (term == null) return termID;
+        ResultSet result = null;
+        PreparedStatement statement = null;
         try {
-            this.pstmtVocabulary.setString(1, term);
-            ResultSet result = this.pstmtVocabulary.executeQuery();
+            statement = this.conn.prepareStatement("select termid, df from vocabulary where term like ?");
+            statement.setString(1, term);
+            result = statement.executeQuery();
             if (result.next()) {
                 termID = result.getInt("termid");
                 this.mapTermIDDF.put(termID, result.getInt("df"));
             }
-            result.close();
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(statement);
         }
         return termID;
     }
@@ -116,17 +154,22 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     @Override
     public HashMap<Integer, Double> getPosting(int termID) {
         HashMap<Integer, Double> posting = new HashMap<Integer, Double>();
+        ResultSet result = null;
+        PreparedStatement statement = null;
         try {
-            this.pstmtPostings.setInt(1, termID);
-            ResultSet result = this.pstmtPostings.executeQuery();
+            statement = this.conn.prepareStatement("select CategoryID, TFIDF from postings where TermID = ?");
+            statement.setInt(1, termID);
+            result = statement.executeQuery();
             while (result.next()) {
                 int cid = result.getInt("CategoryID");
                 double weight = result.getDouble("TFIDF");
                 posting.put(cid, weight);
             }
-            result.close();
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(statement);
         }
         return posting;
     }
@@ -134,15 +177,20 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     @Override
     public double getScalar(int id) {
         double scalar = 0.0;
+        ResultSet result = null;
+        PreparedStatement statement = null;
         try {
-            this.pstmtScalar.setInt(1, id);
-            ResultSet result = this.pstmtScalar.executeQuery();
+            statement = this.conn.prepareStatement("select scalar from category where categoryID = ?");
+            statement.setInt(1, id);
+            result = statement.executeQuery();
             if (result.next()) {
                 scalar = result.getDouble("scalar");
             }
-            result.close();
         } catch (Exception ex) {
             ex.printStackTrace();
+        } finally {
+            close(result);
+            close(statement);
         }
         return scalar;
     }
@@ -150,9 +198,4 @@ public class CentroidClassifierSQLite extends CentroidClassifier {
     private int numDoc;
     private HashMap<Integer, Integer> mapTermIDDF;
     private Connection conn;
-    private PreparedStatement pstmtVocabulary;
-    private PreparedStatement pstmtPostings;
-    private PreparedStatement pstmtScalar;
-    private PreparedStatement pstmtCName;
-    private PreparedStatement pstmtCID;
 }

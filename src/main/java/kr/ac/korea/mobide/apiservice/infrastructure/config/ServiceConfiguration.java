@@ -1,6 +1,7 @@
 package kr.ac.korea.mobide.apiservice.infrastructure.config;
 
 import kr.ac.korea.mobide.apiservice.infrastructure.filter.RequestLoggingFilter;
+import kr.ac.korea.mobide.sigma.classifier.sqlite.CentroidClassifierSQLite;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,5 +28,10 @@ public class ServiceConfiguration {
         filter.setEncoding("UTF-8");
         bean.setFilter(filter);
         return bean;
+    }
+
+    @Bean
+    public CentroidClassifierSQLite centroidClassifierSQLite() {
+        return new CentroidClassifierSQLite("/tmp/sigmaBase100.db");
     }
 }

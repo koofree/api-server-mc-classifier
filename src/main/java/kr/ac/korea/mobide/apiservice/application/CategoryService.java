@@ -3,6 +3,7 @@ package kr.ac.korea.mobide.apiservice.application;
 import kr.ac.korea.mobide.apiservice.interfaces.dto.Category;
 import kr.ac.korea.mobide.sigma.classifier.sqlite.CentroidClassifierSQLite;
 import kr.ac.korea.mobide.sigma.common.ScoreData;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -13,9 +14,11 @@ import java.util.List;
  */
 @Service
 public class CategoryService {
-    public List<Category> generateCategory(String query, int count) {
-        CentroidClassifierSQLite classifier = new CentroidClassifierSQLite("/tmp/sigmaBase100.db");
 
+    @Autowired
+    private CentroidClassifierSQLite classifier;
+
+    public List<Category> generateCategory(String query, int count) {
         List<Category> categories = new ArrayList<Category>();
 
         for (ScoreData data : classifier.topK(count, query)) {
