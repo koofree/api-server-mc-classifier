@@ -2,6 +2,8 @@ package kr.ac.korea.mobide.apiservice.infrastructure.config;
 
 import kr.ac.korea.mobide.apiservice.infrastructure.filter.RequestLoggingFilter;
 import kr.ac.korea.mobide.sigma.classifier.sqlite.CentroidClassifierSQLite;
+import kr.ac.korea.mobide.sigma.wppr.sqlite.WPPRSQLite;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +15,13 @@ import org.springframework.web.filter.CharacterEncodingFilter;
 
 @Configuration
 public class ServiceConfiguration {
+
+    @Value("${spring.datasource.sigmaBase}")
+    private String sigmaBase;
+
+    @Value("${spring.datasource.sigmaSimilarity}")
+    private String sigmaSimialrity;
+
     @Bean
     public FilterRegistrationBean requestLoggingFilterRegistrationBean() {
         FilterRegistrationBean bean = new FilterRegistrationBean();
@@ -32,6 +41,11 @@ public class ServiceConfiguration {
 
     @Bean
     public CentroidClassifierSQLite centroidClassifierSQLite() {
-        return new CentroidClassifierSQLite("/tmp/sigmaBase100.db");
+        return new CentroidClassifierSQLite(sigmaBase);
+    }
+
+    @Bean
+    public WPPRSQLite wpprSQLite() {
+        return new WPPRSQLite(sigmaSimialrity);
     }
 }
